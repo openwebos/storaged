@@ -1,0 +1,159 @@
+# @@@LICENSE
+#
+#      Copyright (c) 2002-2012 Hewlett-Packard Development Company, L.P.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# LICENSE@@@
+
+
+Normal flow of events
+
+=== Entering MSM (mass storage mode) ===
+
+* udev subsystem notifies us that MSM is available, e.g. after user
+  conects pPhone to a desktop via a USB cable:
+
+>> Sent to: luna://com.palm.storage/diskmode/changed
+>> params: {"connected": true}
+
+* We send a signal to all who care (and hope that systemservice does)
+  that MSM is available:
+
+>> signal to: luna://com.palm.storage/storaged/MSMAvail
+>> params: {"mode-avail": true}
+
+* Somebody asks the user whether to go into MSM.  If the user
+  dismisses or says no, no action is taken.  But if the user confirms,
+  that somebody sends an event requesting that we actually enter MSM.
+  If we enter MSM, we also include a boolean enterIMasq which indicates
+  wether we are entering media sync mode (true) or disk mode (false).
+
+>> Sent to: luna://com.palm.storage/diskmode/enterMSM
+>> params: {"user-confirmed": true, "enterIMasq": true|false}
+
+* Before we can make our partition available for the host to mount we
+  must unmount it from its internal mountpoint.  This won't succeed if
+  any process on the device has a file open.  So we send a signal
+  indicating intent to unmount the partition.
+
+>> signal to: luna://com.palm.storage/storaged/MSMProgress
+>> params: {"stage": "attempting", "enterIMasq": true|false}
+
+* To give interested parties on the device time to deal with the
+  pending unmount, we set a three second timer and do nothing until it
+  expires.  Once it does expire, we unmount the partition.  We first
+  try a "normal" unmount.  If that fails, we try again with the
+  MNT_FORCE flag.  This latter attempt is supposed to always succeed.
+  At this point we're done: we've succeeded or failed.  We now send a
+  signal indicating success or failure.
+
+>> signal to: luna://com.palm.storage/storaged/MSMProgress
+>> params: {"stage": "succeeded", "forceRequired": true|false, "enterIMasq": true|false }
+or
+>> signal to: luna://com.palm.storage/storaged/MSMProgress
+>> params: {"stage": "failed", "enterIMasq": true|false}
+
+* If we successfully unmount the partition from /media/internal, we
+  then tweak sysfs to indicate to remote hosts that the partition is
+  mountable.  On successfully putting the device into MSM, storaged
+  sends out another signal.
+
+>> signal to: luna://com.palm.storage/storaged/MSMEntry
+>> params: {"new-mode": "brick", "enterIMasq": true|false}
+
+* When it detects that the device has been mounted remotely, udev
+  sends another event to storaged:
+
+>> Sent to: luna://com.palm.storage/diskmode/avail
+>> params: {"connected": true}
+
+=== Leaving MSM (mass storage mode) ===
+
+* Ideally this happens when the user tells his desktop to "eject" the
+  MSM-mounted pPhone, at which point udev subsystem notifies us that
+  the device has been ejected
+
+>> Sent to: luna://com.palm.storage/diskmode/avail
+>> params: {"connected": false}
+
+* storaged responds to this by sending a signal indicating that we've
+  left MSM mode.  This is meant for systemservice, which will change
+  the UI and restart apps.  storaged will also attempt to remount the
+  media partion on /media/internal at this point.
+
+>> signal to: luna://com.palm.storage/storaged/MSMEntry
+>> params: {"new-mode": "phone"}
+
+* When the cable is pulled, which can happen while the pPhone is still
+  in MSM, udev sends an event to storaged
+
+>> Sent to: luna://com.palm.storage/diskmode/changed
+>> params: {"connected": false}
+
+* storaged responds by sending a signal indicating that the possiblity
+  of entering MSM is gone
+
+>> signal to: luna://com.palm.storage/storaged/MSMAvail
+>> params: {"mode-avail": false}
+
+* In addition, when the /media/internal partition becomes available
+  (mount finishes, but see Error conditions below), storaged sends
+  another signal
+
+>> signal to: luna://com.palm.storage/storaged/PartitionAvail
+>> params: {"mount_point": "/media/internal", "available": true}
+
+=== Error conditions ===
+
+* When we leave MSM, we remount the DOS partition on /media/internal.
+  If this fails, we run fsck and attempt to mount it again. thus:
+
+>> signal to: luna://com.palm.storage/storaged/PartitionAvail
+>> params: {"mount_point": "/media/internal", "available": true, "fscked": true}
+
+* If that second mount attempt fails, the partition is reformatted and re-initialized.
+  If that has been done, there is an optional parameter added to PartitionAvail
+  thus:
+
+>> signal to: luna://com.palm.storage/storaged/PartitionAvail
+>> params: {"mount_point": "/media/internal", "available": true, "reformatted": true, "fscked": true}
+
+Only one PartitionAvail signal is sent.  If reformatting is required,
+it occurs before any PartitionAvail is sent.
+
+
+=== New public (as well as private) signal & method for apps ===
+
+Whenever the user selects the option to enter MSM mode on UI, the following signal is sent:
+
+>> signal to: luna://com.palm.storage/storaged/MSMStatus
+>> params: {"inMSM": true}
+
+Once the MSM mode exits or the device is not able to enter MSM due to failure 
+to unmout /media/internal partition following signal is sent:
+
+>> signal to: luna://com.palm.storage/storaged/MSMStatus
+>> params: {"inMSM": false}
+
+To query the MSM status following luna call needs to be made :
+ "luna://com.palm.storage/diskmode/queryMSMStatus
+
+which returns:
+>> params: {"inMSM": true|false}
+
+inMSM is true if we are in MSM or attempting to enter MSM,
+and false otherwise.
+
+
+

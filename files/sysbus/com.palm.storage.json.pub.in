@@ -1,6 +1,6 @@
 {
     "role": {
-        "exeName":"/usr/sbin/storaged",
+        "exeName":"@WEBOS_INSTALL_SBINDIR@/storaged",
         "type": "regular",
         "allowedNames": ["com.palm.storage"]
     },

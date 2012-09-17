@@ -57,5 +57,5 @@ else
 fi
 
 # TODO: use luna-helper rather than luna-send here
-DbgPrint "/usr/bin/luna-send -n 1 luna://com.palm.storage/diskmode/$method \"$MESSAGE\""
-/usr/bin/luna-send -n 1 luna://com.palm.storage/diskmode/$method "$MESSAGE"
+DbgPrint "@WEBOS_INSTALL_BINDIR@/luna-send -n 1 luna://com.palm.storage/diskmode/$method \"$MESSAGE\""
+@WEBOS_INSTALL_BINDIR@/luna-send -n 1 luna://com.palm.storage/diskmode/$method "$MESSAGE"

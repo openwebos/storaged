@@ -17,8 +17,5 @@
 # LICENSE@@@
 
 
+KERNEL=="usb_gadget", SUBSYSTEM=="platform", DRIVER=="usb_gadget", ENV{G_SUBSYSTEM}=="storage", ACTION=="change", RUN+="@WEBOS_INSTALL_SYSCONFDIR@/udev/scripts/storage.sh $ENV{G_ACTION} $ENV{G_MEDIA_LOADED}$ENV{G_HOST_CONNECTED}$ENV{G_MEDIA_REQUESTED}$ENV{G_BUS_SUSPENDED}"
 
-[D-BUS Service]
-Name=com.palm.storage;com.palm.storage
-Exec=/usr/sbin/storaged -d -s
-Type=dynamic

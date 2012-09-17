@@ -20,5 +20,5 @@
 
 [D-BUS Service]
 Name=com.palm.storage
-Exec=/usr/sbin/storaged -d -s
+Exec=@WEBOS_INSTALL_SBINDIR@/storaged -d -s
 Type=dynamic

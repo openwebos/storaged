@@ -21,101 +21,36 @@
 #
 
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8.7)
 
-project(storaged)
+project(storaged C)
 
-set(STORAGED_VERSION_MAJOR 2)
-set(STORAGED_VERSION_MINOR 1)
-set(STORAGED_VERSION_PATCH 0)
-set(STORAGED_PROGRAM_VERSION "${STORAGED_VERSION_MAJOR}.${STORAGED_VERSION_MINOR}.${STORAGED_VERSION_PATCH}")
-
-# Make sure the build system's version of this component matches what we're building.
-# The intent is for it to pass in STORAGED_COMPONENT_VERSION via the command line.
-if(DEFINED STORAGED_COMPONENT_VERSION)
-    if (NOT (STORAGED_PROGRAM_VERSION STREQUAL STORAGED_COMPONENT_VERSION))
-        message(FATAL_ERROR "Component version from build system (${STORAGED_COMPONENT_VERSION}) != program version (${STORAGED_PROGRAM_VERSION})")
-    endif()
-endif()
-
-# XXX Why is CMAKE_BUILD_TYPE empty under Ubuntu?
-if(NOT CMAKE_BUILD_TYPE)
-    set (CMAKE_BUILD_TYPE "Release")
-endif()
-
-if(NOT DEFINED ENV{PKG_CONFIG_PATH})
-    set(ENV{PKG_CONFIG_PATH} "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig")
-endif()
-
-if(CMAKE_INSTALL_PREFIX STREQUAL "/usr")
-    set(SYSCONFDIR_FULL "/etc")
-else()
-    set(SYSCONFDIR_FULL "${CMAKE_INSTALL_PREFIX}/etc")
-endif()
-
-message("")
-
-message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
-message(STATUS "CMAKE_FIND_ROOT_PATH: ${CMAKE_FIND_ROOT_PATH}")
-message(STATUS "ENV{PKG_CONFIG_PATH}: $ENV{PKG_CONFIG_PATH}")
-message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
-
-#  Note that TARGET_CORE_OS is no longer used, but keep it around in case it turns out to be needed later.
-set(DEFAULT_TARGET_CORE_OS "ubuntu" CACHE INTERNAL "The default core OS for which to build")
-
-# Should specify a core OS (ubuntu, rockhopper, etc.)
-if(TARGET_CORE_OS)
-    message(STATUS "TARGET_CORE_OS: ${TARGET_CORE_OS}")
-else()
-    set(TARGET_CORE_OS "${DEFAULT_TARGET_CORE_OS}")
-    message(STATUS "No TARGET_CORE_OS value specified -- defaulting to ${TARGET_CORE_OS}")
-endif()
-set(TARGET_CORE_OS ${TARGET_CORE_OS} CACHE STRING "The core OS for which to build")
-
-message("")
-
-
-macro(add_flags flags)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flags}")
-endmacro()
-
-macro(add_linker_flags flags)
-    # Appending to CMAKE_EXE_LINKER_FLAGS fails to add them to the link command line -- why?
-    # Note that using add_definitions() also fails to add to the link command line.
-    add_flags("${flags}")
-endmacro()
-
+include(webOS/webOS)
+webos_modules_init(1 0 0 QUALIFIER RC3)
+webos_component(2 1 0)
 
 include(FindPkgConfig)
 
-# Check that we have glib-2.0
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
-add_definitions(${GLIB2_CFLAGS})
+include_directories(${GLIB2_INCLUDE_DIRS})
+webos_add_compiler_flags(ALL ${GLIB2_CFLAGS_OTHER})
 
-# Check that we have luna-service2
 pkg_check_modules(LUNASERVICE2 REQUIRED luna-service2)
-add_definitions(${LUNASERVICE2_CFLAGS})
+include_directories(${LUNASERVICE2_INCLUDE_DIRS})
+webos_add_compiler_flags(ALL ${LUNASERVICE2_CFLAGS_OTHER})
 
-# luna-service2 requires cjson; make sure it's available
 pkg_check_modules(CJSON REQUIRED cjson)
-add_definitions(${CJSON_CFLAGS})
+include_directories(${CJSON_INCLUDE_DIRS})
+webos_add_compiler_flags(ALL ${CJSON_CFLAGS_OTHER})
 
-# Check that we have nyx-lib
 pkg_check_modules(NYXLIB REQUIRED nyx)
-add_definitions(${NYXLIB_CFLAGS})
+include_directories(${NYXLIB_INCLUDE_DIRS})
+webos_add_compiler_flags(ALL ${NYXLIB_CFLAGS_OTHER})
 
-# Specifying this caused PATH_MAX not to be defined
-#add_definitions("-std=c99")
-
-# Turn on all useful warnings, but don't specify -Werror -- having warnings break the build makes
-# switching to a new compiler a lengthy and painful ordeal.
-add_definitions("-Wall")
+webos_add_compiler_flags(ALL -Wall)
 
 # Require that all undefined symbols are satisfied by the libraries from target_link_libraries()
-add_linker_flags("-Wl,--no-undefined")
-# XXX_ The libraries that come with gcc fail when --no-allow-shlib-undefined is specified
-#add_linker_flags("-Wl,--no-allow-shlib-undefined")
-
+webos_add_linker_options(ALL --no-undefined)
 
 # Build the storaged executable
 
@@ -125,8 +60,8 @@ target_link_libraries(storaged
                         ${LUNASERVICE2_LDFLAGS}
                         ${CJSON_LDFLAGS}
                         ${NYXLIB_LDFLAGS})
+webos_build_program(ADMIN)
+webos_build_system_bus_files()
 
-
-install(TARGETS storaged DESTINATION "sbin")
-install(PROGRAMS etc/udev/scripts/storage.sh DESTINATION "${SYSCONFDIR_FULL}/udev/scripts")
-install(FILES etc/udev/rules.d/90-storaged.rules DESTINATION "${SYSCONFDIR_FULL}/udev/rules.d")
+webos_build_configured_file(scripts/public/storage.sh SYSCONFDIR udev/scripts)
+webos_build_configured_file(files/conf/90-storaged.rules SYSCONFDIR udev/rules.d)

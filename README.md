@@ -1,6 +1,12 @@
 storaged
 ========
 
+Summary
+-------
+Open webOS component to enable Mass Storage Mode
+
+Description
+-----------
 The storaged daemon is responsible for enabling and disabling Mass Storage Mode (MSM) on the platform. MSM allows the mounting of a partition of the storage on the platform as an external drive on a host computer using the mass storage device class USB protocol. Storaged is an on-demand daemon, i.e. it is only started when the platform is connected to a host computer via USB and exits as soon as it is disconnected.
 
 How to Build on Linux
@@ -10,19 +16,20 @@ How to Build on Linux
 
 Below are the tools and libraries (and their minimum versions) required to build storaged:
 
-* cmake 2.6
-* gcc 4.3
-* glib-2.0 2.16.6
+* cmake (version required by openwebos/cmake-modules-webos)
+* gcc 4.6.3
+* glib-2.0 2.32.1
 * make (any version)
 * openwebos/cjson 1.8.0
+* openwebos/cmake-modules-webos 1.0.0 RC3
 * openwebos/luna-service2 3.0.0
-* openwebos/nyx-lib 2.0.0 RC 2
-* pkg-config 0.22
-
+* openwebos/nyx-lib 2.0.0 RC2
+* pkg-config 0.26
 
 ## Building
 
-Once you have downloaded the source, execute the following to build it:
+Once you have downloaded the source, enter the following to build it (after
+changing into the directory under which it was downloaded):
 
     $ mkdir BUILD
     $ cd BUILD
@@ -30,29 +37,38 @@ Once you have downloaded the source, execute the following to build it:
     $ make
     $ sudo make install
 
-The daemon will be installed under
+The directory under which the files are installed defaults to `/usr/local/webos`.
+You can install them elsewhere by supplying a value for `WEBOS_INSTALL_ROOT`
+when invoking `cmake`. For example:
 
-    /usr/local/sbin
-
-and the udev scripts under
-
-    /usr/local/etc/udev
-
-You can install it elsewhere by supplying a value for _CMAKE\_INSTALL\_PREFIX_ when invoking _cmake_. For example:
-
-    $ cmake -D CMAKE_INSTALL_PREFIX:STRING=$HOME/projects/openwebos ..
+    $ cmake -D WEBOS_INSTALL_ROOT:PATH=$HOME/projects/openwebos ..
     $ make
     $ make install
-    
-will install the files in subdirectories of $HOME/projects/openwebos instead of subdirectories of /usr/local. 
 
-Specifying _CMAKE\_INSTALL\_PREFIX_ also causes the pkg-config files under it to be used to find headers and libraries. To have _pkg-config_ look in a different tree, set the environment variable PKG_CONFIG_PATH to the path to its _lib/pkgconfig_ subdirectory.
+will install the files in subdirectories of `$HOME/projects/openwebos`.
+
+Specifying `WEBOS_INSTALL_ROOT` also causes `pkg-config` to look in that tree
+first before searching the standard locations. You can specify additional
+directories to be searched prior to this one by setting the `PKG_CONFIG_PATH`
+environment variable.
+
+If not specified, `WEBOS_INSTALL_ROOT` defaults to `/usr/local/webos`.
+
+To configure for a debug build, enter:
+
+    $ cmake -D CMAKE_BUILD_TYPE:STRING=Debug ..
+
+To see a list of the make targets that `cmake` has generated, enter:
+
+    $ make help
 
 ## Uninstalling
 
-From the directory where you originally ran _make install_, invoke:
+From the directory where you originally ran `make install`, enter:
 
-    $ sudo xargs rm < install_manifest.txt
+ $ [sudo] make uninstall
+
+You will need to use `sudo` if you did not specify `WEBOS_INSTALL_ROOT`.
 
 # Copyright and License Information
 
@@ -74,4 +90,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-

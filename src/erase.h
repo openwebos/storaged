@@ -19,7 +19,7 @@
 #ifndef __STORAGED_ERASE_H__
 #define __STORAGED_ERASE_H__
 
-#include <lunaservice.h>
+#include <luna-service2/lunaservice.h>
 
 int EraseInit(GMainLoop *loop, LSHandle* handle);
 #endif

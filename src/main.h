@@ -16,7 +16,7 @@
 *
 * LICENSE@@@ */
 
-#include <lunaservice.h>
+#include <luna-service2/lunaservice.h>
 #include <nyx/nyx_client.h>
 
 nyx_device_handle_t GetNyxSystemDevice(void);

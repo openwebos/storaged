@@ -28,7 +28,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include <lunaservice.h>
+#include <luna-service2/lunaservice.h>
 
 #include "diskmode.h"
 #include "erase.h"

@@ -36,7 +36,7 @@
 
 #include "log.h"
 
-#include <lunaservice.h>
+#include <luna-service2/lunaservice.h>
 
 #include "signals.h"
 #include "util.h"

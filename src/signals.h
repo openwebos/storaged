@@ -20,7 +20,7 @@
 #define _SIGNALS_H_
 
 #include <stdbool.h>
-#include <lunaservice.h>
+#include <luna-service2/lunaservice.h>
 
 /** SignalsInit
  * 

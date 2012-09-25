@@ -22,7 +22,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <lunaservice.h>
+#include <luna-service2/lunaservice.h>
 #include "util.h"
 #include "erase.h"
 #include "main.h"

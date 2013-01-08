@@ -1,6 +1,6 @@
 # @@@LICENSE
 #
-#      Copyright (c) 2002-2012 Hewlett-Packard Development Company, L.P.
+#      Copyright (c) 2002-2013 Hewlett-Packard Development Company, L.P.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,8 +26,8 @@ cmake_minimum_required(VERSION 2.8.7)
 project(storaged C)
 
 include(webOS/webOS)
-webos_modules_init(1 0 0 QUALIFIER RC3)
-webos_component(2 1 0)
+webos_modules_init(1 0 0 QUALIFIER RC4)
+webos_component(2 2 0)
 
 include(FindPkgConfig)
 
@@ -46,6 +46,18 @@ webos_add_compiler_flags(ALL ${CJSON_CFLAGS_OTHER})
 pkg_check_modules(NYXLIB REQUIRED nyx)
 include_directories(${NYXLIB_INCLUDE_DIRS})
 webos_add_compiler_flags(ALL ${NYXLIB_CFLAGS_OTHER})
+
+# Nyxlib version 3.2.0~rc1 introduced an API break in Mass Storage Mode usage
+string(REPLACE "." ";" NYXV ${NYXLIB_VERSION})
+string(REPLACE "~" ";" NYXV "${NYXV}")
+list(GET NYXV 0 NYXLIB_MAJOR)
+list(GET NYXV 1 NYXLIB_MINOR)
+if(${NYXLIB_MAJOR} LESS 4 AND ${NYXLIB_MINOR} LESS 2)
+	message(FATAL_ERROR "nyx-lib required minimum version is 3.2.0~RC1")
+endif()
+unset(NYXV)
+unset(NYXLIB_MAJOR)
+unset(NYXLIB_MINOR)
 
 webos_add_compiler_flags(ALL -Wall)
 

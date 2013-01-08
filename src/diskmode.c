@@ -1,6 +1,6 @@
 /* @@@LICENSE
 *
-*      Copyright (c) 2002-2012 Hewlett-Packard Development Company, L.P.
+*      Copyright (c) 2002-2013 Hewlett-Packard Development Company, L.P.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ static guint sUmountTimerId = 0;   /* real ids always > 0 */
 static bool inMSM = false, unmount = false;
 
 
-#define SYSTEM_SERVICE "com.palm.systemservice" 
+#define SYSTEM_SERVICE "com.palm.systemservice"
 #define TIMEOUT_SECONDS 10  /* how many seconds of inactivity before quitting */
 #define MSM_WAIT_SECONDS 3  /* how long to wait for open file owners to quit */
 #define MEDIA_INTERNAL "/media/internal"
@@ -69,15 +69,15 @@ enum {
     DISKMODE_ERROR_FSCK_ON_MOUNTED_PARTITION
 };
 
-static void finish_MSM_transition( LSHandle* lsh );
-static void abort_MSM_transition( LSHandle* lsh );
+static void finish_mass_storage_mode_transition( LSHandle* lsh );
+static void abort_mass_storage_mode_transition( LSHandle* lsh );
 
-static nyx_device_handle_t nyxSystem = NULL;
+static nyx_device_handle_t nyxMassStorageMode = NULL;
 
 /**
  * @brief timer proc that, when fired by a GTimer, attempts to make the disk
  * mountable by the remote host and if unsuccessful aborts the transition to
- * MSM.
+ * Mass Storage Mode.
  */
 static gboolean 
 umount_timer_proc( gpointer data )
@@ -85,15 +85,15 @@ umount_timer_proc( gpointer data )
     g_debug( "%s()", __func__ );
     LSHandle* lsh = (LSHandle*)data;
 
-    nyx_system_msm_return_code_t ret_status;
+    nyx_mass_storage_mode_return_code_t ret_status;
 
-    bool ret = nyx_system_set_msm_mode(nyxSystem,NYX_SYSTEM_MSM_ENABLE, &ret_status);
+    bool ret = nyx_mass_storage_mode_set_mode(nyxMassStorageMode,NYX_MASS_STORAGE_MODE_ENABLE, &ret_status);
 
     if( ret == NYX_ERROR_NONE) {
-        finish_MSM_transition( lsh );
+        finish_mass_storage_mode_transition( lsh );
     } else {
-    	g_message("Aborting MSM mode due to return code : %d",ret_status);
-        abort_MSM_transition( lsh );
+    	g_message("Aborting Mass Storage Mode due to return code : %d",ret_status);
+        abort_mass_storage_mode_transition( lsh );
     }
     sUmountTimerId = 0;
 
@@ -131,19 +131,19 @@ launch_customization(LSHandle* lsh)
     LSErrorFree( &lserror );
 }
 
-void handle_msm_exit(nyx_system_msm_return_code_t ret_status, LSHandle* lsh)
+void handle_mass_storage_mode_exit(nyx_mass_storage_mode_return_code_t ret_status, LSHandle* lsh)
 {
-    /* Let's just ignore this message if we can't get into MSM mode at all. */
-   	if (ret_status >= NYX_SYSTEM_MSM_PARTITION_REFORMATTED)
+    /* Let's just ignore this message if we can't get into Mass Storage Mode at all. */
+   	if (ret_status >= NYX_MASS_STORAGE_MODE_PARTITION_REFORMATTED)
    	{
                 g_critical("Drive reformatted due to unmount failures");
-   		if(ret_status != NYX_SYSTEM_MSM_MOUNT_FAILURE_AFTER_REFORMAT)
+   		if(ret_status != NYX_MASS_STORAGE_MODE_MOUNT_FAILURE_AFTER_REFORMAT)
    			launch_customization(lsh);
 	}
 
     if (unmount) {
-       	bool reformatted = (ret_status >= NYX_SYSTEM_MSM_PARTITION_REFORMATTED);
-       	bool fsck_found_problem = (ret_status == NYX_SYSTEM_MSM_FSCK_PROBLEM) || (ret_status == NYX_SYSTEM_MSM_PARTITION_REFORMATTED_FSCK_PROBLEM);
+       	bool reformatted = (ret_status >= NYX_MASS_STORAGE_MODE_PARTITION_REFORMATTED);
+       	bool fsck_found_problem = (ret_status == NYX_MASS_STORAGE_MODE_FSCK_PROBLEM) || (ret_status == NYX_MASS_STORAGE_MODE_PARTITION_REFORMATTED_FSCK_PROBLEM);
        	SignalPartitionAvail( lsh, MEDIA_INTERNAL, true, reformatted, fsck_found_problem );
        	unmount = false;
     }
@@ -156,10 +156,10 @@ handle_cable( LSHandle* lsh, bool plugIn) {
     GError *error = NULL;
     bool still_exported = true; 
     bool know_export_state = true;
-    int msm_state = 0;
+    int mass_storage_mode_state = 0;
 
-    know_export_state = nyx_system_get_msm_state(nyxSystem, &msm_state);
-    still_exported = msm_state & NYX_SYSTEM_MSM_MODE_ON;
+    know_export_state = nyx_mass_storage_mode_get_state(nyxMassStorageMode, &mass_storage_mode_state);
+    still_exported = mass_storage_mode_state & NYX_MASS_STORAGE_MODE_MODE_ON;
 
     SHOW_ERROR(error);
 
@@ -183,10 +183,10 @@ handle_cable( LSHandle* lsh, bool plugIn) {
         if(still_exported)
         	SignalMSMFscking(lsh);
 
-    	nyx_system_msm_return_code_t ret_status;
-    	nyx_system_set_msm_mode(nyxSystem, NYX_SYSTEM_MSM_DISABLE_AFTER_FSCK, &ret_status);
+    	nyx_mass_storage_mode_return_code_t ret_status;
+    	nyx_mass_storage_mode_set_mode(nyxMassStorageMode, NYX_MASS_STORAGE_MODE_DISABLE_AFTER_FSCK, &ret_status);
 
-        handle_msm_exit(ret_status,lsh);
+        handle_mass_storage_mode_exit(ret_status,lsh);
 
         SignalMSMAvailChange( lsh, false );
 
@@ -210,14 +210,14 @@ handle_cableLS( LSHandle* lsh, LSMessage* message, void* user_data )
     gchar* answer = "";
     bool plugIn;
 
-    int msm_state = 0;
-    nyx_system_get_msm_state(nyxSystem, &msm_state);
+    int mass_storage_mode_state = 0;
+    nyx_mass_storage_mode_get_state(nyxMassStorageMode, &mass_storage_mode_state);
 
-    /* Let's just ignore this message if we can't get into MSM mode at all. */
-    if (!(msm_state & NYX_SYSTEM_MSM_DRIVER_AVAILABLE))
+    /* Let's just ignore this message if we can't get into Mass Storage Mode at all. */
+    if (!(mass_storage_mode_state & NYX_MASS_STORAGE_MODE_DRIVER_AVAILABLE))
     {
-        g_debug( "%s: msm driver unavailable", __func__ );
-        answer = "{\"returnValue\":false,\"errorText\":\"MSM driver unavailable\"}";
+        g_debug( "%s: Mass Storage Mode driver unavailable", __func__ );
+        answer = "{\"returnValue\":false,\"errorText\":\"Mass Storage Mode driver unavailable\"}";
         SignalMSMAvailChange( lsh, false );
         goto send;
     }
@@ -258,16 +258,16 @@ handle_mount_on_host(LSHandle *lsh, bool mount)
     SignalMSMModeChange( lsh, mount );
 
     if ( !mount ) {
-        nyx_system_msm_return_code_t ret_status;
+        nyx_mass_storage_mode_return_code_t ret_status;
 
-	nyx_system_set_msm_mode(nyxSystem, NYX_SYSTEM_MSM_DISABLE, &ret_status);
+    nyx_mass_storage_mode_set_mode(nyxMassStorageMode, NYX_MASS_STORAGE_MODE_DISABLE, &ret_status);
 
-	if(ret_status == NYX_SYSTEM_MSM_MOUNT_FAILURE) {
-		SignalMSMFscking(lsh);
-		nyx_system_set_msm_mode(nyxSystem, NYX_SYSTEM_MSM_DISABLE_AFTER_FSCK, &ret_status);
-	}
+    if(ret_status == NYX_MASS_STORAGE_MODE_MOUNT_FAILURE) {
+        SignalMSMFscking(lsh);
+        nyx_mass_storage_mode_set_mode(nyxMassStorageMode, NYX_MASS_STORAGE_MODE_DISABLE_AFTER_FSCK, &ret_status);
+        }
 
-        handle_msm_exit(ret_status, lsh);
+        handle_mass_storage_mode_exit(ret_status, lsh);
 
         inMSM = false;
         SignalMSMStatus ( lsh, false);
@@ -291,13 +291,13 @@ handle_mount_on_hostLS( LSHandle* lsh, LSMessage* message, void* user_data )
     /* IIRC, we can't have allowed mount or eject without the driver being
        involved.
        We can get into this case if passthru mode is enabled, so ignore this event */
-    int msm_state = 0;
-    nyx_system_get_msm_state(nyxSystem, &msm_state);
+    int mass_storage_mode_state = 0;
+    nyx_mass_storage_mode_get_state(nyxMassStorageMode, &mass_storage_mode_state);
 
-    if (!(msm_state & NYX_SYSTEM_MSM_DRIVER_AVAILABLE))
+    if (!(mass_storage_mode_state & NYX_MASS_STORAGE_MODE_DRIVER_AVAILABLE))
     {
-        g_debug( "%s: msm driver unavailable", __func__ );
-        answer = "{\"returnValue\":false,\"errorText\":\"MSM driver unavailable\"}";
+        g_debug( "%s: Mass Storage Mode driver unavailable", __func__ );
+        answer = "{\"returnValue\":false,\"errorText\":\"Mass Storage Mode driver unavailable\"}";
         goto send;
     }
 
@@ -335,9 +335,9 @@ handle_host_connected_query( LSHandle* lsh, LSMessage* message, void* user_data 
     LSError lserror;
     LSErrorInit( &lserror );
 
-    int msm_state = 0;
-    nyx_system_get_msm_state(nyxSystem, &msm_state);
-    bool connected = msm_state & NYX_SYSTEM_MSM_HOST_CONNECTED;
+    int mass_storage_mode_state = 0;
+    nyx_mass_storage_mode_get_state(nyxMassStorageMode, &mass_storage_mode_state);
+    bool connected = mass_storage_mode_state & NYX_MASS_STORAGE_MODE_HOST_CONNECTED;
 
     char reply[128];
     snprintf( reply, sizeof(reply), "{\"result\": true, \"hostIsConnected\": %s}",
@@ -353,7 +353,7 @@ handle_host_connected_query( LSHandle* lsh, LSMessage* message, void* user_data 
 
 /** @brief
  * 
- * We need to unmount /media/internal before we can put ourselves in MSM mode.
+ * We need to unmount /media/internal before we can put ourselves in Mass Storage Mode.
  * We may succeed right away, in which case there's little to do here.  But if
  * we fail, we assume it's because other processes are holding files open
  * there.  They must stop, and if well-behaved are listening on our signal.
@@ -361,7 +361,7 @@ handle_host_connected_query( LSHandle* lsh, LSMessage* message, void* user_data 
  * failed, logging whose fault it was.
  */
 static void
-begin_MSM_transition( LSHandle* lsh )
+begin_mass_storage_mode_transition( LSHandle* lsh )
 {
     g_debug( "%s()", __func__ );
     inMSM = true;
@@ -375,7 +375,7 @@ begin_MSM_transition( LSHandle* lsh )
  * @brief 
  */
 static void
-finish_MSM_transition( LSHandle* lsh)
+finish_mass_storage_mode_transition( LSHandle* lsh)
 {
     SignalMSMProgress( lsh, MSM_MODE_CHANGE_SUCCEEDED, false );
     unmount = true;
@@ -385,7 +385,7 @@ finish_MSM_transition( LSHandle* lsh)
  * @brief 
  */
 static void
-abort_MSM_transition( LSHandle* lsh )
+abort_mass_storage_mode_transition( LSHandle* lsh )
 {
     g_warning("%s: called", __func__);
     inMSM = false;
@@ -437,7 +437,7 @@ send:
  * @brief 
  */
 static bool
-handle_enterMSM( LSHandle* lsh, LSMessage* message, void* user_data )
+handle_enter_mass_storage_mode( LSHandle* lsh, LSMessage* message, void* user_data )
 {
     LSTRACE_LSMESSAGE(message);
 
@@ -451,24 +451,23 @@ handle_enterMSM( LSHandle* lsh, LSMessage* message, void* user_data )
     const char *payload = LSMessageGetPayload(message);
     struct json_object *object = json_tokener_parse(payload);
     if (is_error(object)) {
-    	errStr = "{\"returnValue\":false,\"errorText\":\"param 'user-confirmed' missing or invalid\"}";
-       	goto err;
+        errStr = "{\"returnValue\":false,\"errorText\":\"param 'user-confirmed' missing or invalid\"}";
+        goto err;
     }
 
-    confirmed = json_object_get_boolean(
-    		json_object_object_get(object, "connected"));
+    confirmed = json_object_get_boolean(json_object_object_get(object, "connected"));
 
     errStr = NULL;
     if ( confirmed )
     {
-        int msm_state = 0;
-        nyx_system_get_msm_state(nyxSystem, &msm_state);
-        bool connected = msm_state & NYX_SYSTEM_MSM_HOST_CONNECTED;
+        int mass_storage_mode_state = 0;
+        nyx_mass_storage_mode_get_state(nyxMassStorageMode, &mass_storage_mode_state);
+        bool connected = mass_storage_mode_state & NYX_MASS_STORAGE_MODE_HOST_CONNECTED;
 
         if ( !connected ) {
             g_debug( "not entering brick mode because no usb connection" );
         } else {
-            begin_MSM_transition( lsh );
+            begin_mass_storage_mode_transition( lsh );
         }
     }
 
@@ -479,7 +478,7 @@ handle_enterMSM( LSHandle* lsh, LSMessage* message, void* user_data )
 
 err:
     if ( NULL != errStr ) {
-        char* msg = g_strdup_printf( "{\"result\": false; \"errorText\":\"%s\"}", 
+        char* msg = g_strdup_printf( "{\"result\": false; \"errorText\":\"%s\"}",
                 errStr );
         if ( !LSMessageReply( lsh, message, msg, &lserror ) ) {
             LSREPORT( lserror );
@@ -490,14 +489,14 @@ err:
     LSErrorFree( &lserror );
 
     if (!is_error(object))
-    	json_object_put(object);
+        json_object_put(object);
 
     g_debug( "%s() exiting", __func__ );
     return true;
-} /* handle_enterMSM */
+} /* handle_enter_mass_storage_mode */
 
 static bool
-handle_MSM_status_query( LSHandle* lsh, LSMessage* message, void* user_data )
+handle_mass_storage_mode_status_query( LSHandle* lsh, LSMessage* message, void* user_data )
 {
     LSTRACE_LSMESSAGE(message);
 
@@ -515,27 +514,27 @@ handle_MSM_status_query( LSHandle* lsh, LSMessage* message, void* user_data )
 
     LSErrorFree( &lserror );
     return true;
-} /* handle_MSM_status_query */
+} /* handle_mass_storage_mode_status_query */
 
 
 static LSMethod diskModePrivMethods[] = {
     { "changed", handle_cableLS },   /* notification from udev: cable plugged in */
     { "avail", handle_mount_on_hostLS },       /* kernel set up for disk to be mounted */
     { "busSuspended", handle_bus_suspended },       /* suspend notifications */
-    { "enterMSM", handle_enterMSM }, /* command/notice of user confirmation to enter MSM */
+    { "enterMSM", handle_enter_mass_storage_mode }, /* command/notice of user confirmation to enter Mass Storage Mode */
     { "hostIsConnected", handle_host_connected_query },       /* support questions about state of USB */
-    { "queryMSMStatus", handle_MSM_status_query },   /* query if device is in MSM mode */
+    { "queryMSMStatus", handle_mass_storage_mode_status_query },   /* query if device is in Mass Storage Mode */
     { },
 };
 
 static LSMethod diskModePubMethods[] = {
-    { "queryMSMStatus", handle_MSM_status_query },   /* query if device is in MSM mode */
+    { "queryMSMStatus", handle_mass_storage_mode_status_query },   /* query if device is in Mass Storage Mode */
     {},
 };
 
-static void msm_state_changed(nyx_device_handle_t handle, nyx_callback_status_t status, void* data)
+static void mass_storage_mode_state_changed(nyx_device_handle_t handle, nyx_callback_status_t status, void* data)
 {
-    g_debug("%s : MSM state changed", __FUNCTION__);
+    g_debug("%s : Mass Storage Mode state changed", __FUNCTION__);
 }
 
 /** DiskModeInterfaceInit
@@ -551,7 +550,7 @@ DiskModeInterfaceInit(GMainLoop *loop, LSHandle* priv_handle, LSHandle* pub_hand
     LSErrorInit(&lserror);
 
     if ( !LSRegisterCategory ( priv_handle, "/diskmode", diskModePrivMethods,
-    		NULL, NULL, &lserror) )
+            NULL, NULL, &lserror) )
     {
         LSREPORT( lserror );
     }
@@ -564,14 +563,14 @@ DiskModeInterfaceInit(GMainLoop *loop, LSHandle* priv_handle, LSHandle* pub_hand
 
     g_debug("%s: starting up", __func__);
 
-    nyxSystem = GetNyxSystemDevice();
+    nyxMassStorageMode = GetNyxMassStorageModeDevice();
 
-    int msm_state = 0;
-    nyx_system_get_msm_state(nyxSystem, &msm_state);
-    bool connected = msm_state & NYX_SYSTEM_MSM_HOST_CONNECTED;
+    int mass_storage_mode_state = 0;
+    nyx_mass_storage_mode_get_state(nyxMassStorageMode, &mass_storage_mode_state);
+    bool connected = mass_storage_mode_state & NYX_MASS_STORAGE_MODE_HOST_CONNECTED;
 
-    //register for MSM state changes
-    nyx_system_register_msm_change_callback(nyxSystem, msm_state_changed, NULL);
+    //register for Mass Storage Mode state changes
+    nyx_mass_storage_mode_register_change_callback(nyxMassStorageMode, mass_storage_mode_state_changed, NULL);
 
     // behave like the cable just got plugged in (or unplugged)
     // This ensures we start at the correct state

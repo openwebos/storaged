@@ -1,6 +1,6 @@
 /* @@@LICENSE
 *
-*      Copyright (c) 2002-2012 Hewlett-Packard Development Company, L.P.
+*      Copyright (c) 2002-2013 Hewlett-Packard Development Company, L.P.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@
  * unmounting.  Apps that might have files open need to listen for the signal.
  *
  * On entry to MSM, send additional signal.
- * 
+ *
  * Listen to messages of "usb umount" from Toshi.  Remount partition.
  * Send notice of transition out of MSM.
  */
@@ -83,13 +83,13 @@ LockFile;
 
 static LockFile	sProcessLock;
 
-/** 
+/**
  * @brief LockProcess
- * 
+ *
  * Acquire the process lock (by getting an file lock on our pid file).
  *
- * @param component 
- * 
+ * @param component
+ *
  * @return true on success, false if failed.
  */
 bool LockProcess(const char* component)
@@ -99,16 +99,16 @@ bool LockProcess(const char* component)
 	pid_t		pid;
 	int			fd;
 	int			result;
-	
+
 	pid = getpid();
 
 	LockFile * lock = &sProcessLock;
 
 	// create the locks directory if necessary
 	(void) mkdir(LOCKS_DIR_PATH, 0777);
-	
+
 	snprintf(lock->path, sizeof(lock->path), "%s/%s.pid", LOCKS_DIR_PATH, component);
-	
+
 	// open or create the lock file
 	fd = open(lock->path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
 	if (fd < 0)
@@ -149,7 +149,7 @@ bool LockProcess(const char* component)
 }
 
 
-/** 
+/**
  * @brief UnlockProcess
  *
  * Release the lock on the pid file as previously acquired by
@@ -212,12 +212,20 @@ reset_lifetime_timer()
 }
 
 static nyx_device_handle_t nyxSystem = NULL;
+static nyx_device_handle_t nyxMassStorageMode = NULL;
 
 nyx_device_handle_t
 GetNyxSystemDevice(void)
 {
 	return nyxSystem;
 }
+
+nyx_device_handle_t
+GetNyxMassStorageModeDevice(void)
+{
+	return nyxMassStorageMode;
+}
+
 
 int
 main(int argc, char **argv)
@@ -247,7 +255,7 @@ main(int argc, char **argv)
         }
     }
 
-	// make sure we aren't already running.  
+	// make sure we aren't already running.
 	if (!LockProcess("storaged")) {
 		g_error("%s: %s daemon is already running.\n", __func__, argv[0]);
 		exit(EXIT_FAILURE);
@@ -262,14 +270,24 @@ main(int argc, char **argv)
     g_mainloop = g_main_loop_new(NULL, FALSE);
 
 
- 	int ret = nyx_device_open(NYX_DEVICE_SYSTEM, "Main", &nyxSystem);
- 	if(ret != NYX_ERROR_NONE)
- 	{
- 		g_critical("Unable to open the nyx device system");
- 		abort();
- 	}
- 	else
- 		g_debug("Initialized nyx system device");
+    int ret = nyx_device_open(NYX_DEVICE_SYSTEM, "Main", &nyxSystem);
+    if(ret != NYX_ERROR_NONE)
+    {
+        g_critical("Unable to open the nyx device system");
+        abort();
+    }
+    else
+        g_debug("Initialized nyx system device");
+
+    ret = nyx_device_open(NYX_DEVICE_MASS_STORAGE_MODE, "Main", &nyxMassStorageMode);
+    if(ret != NYX_ERROR_NONE)
+    {
+        g_critical("Unable to open the nyx mass storage mode device");
+        abort();
+    }
+    else
+        g_debug("Initialized nyx mass storage mode device");
+
 
     /**
      *  initialize the lunaservice and we want it before all the init
@@ -294,13 +312,13 @@ main(int argc, char **argv)
     DiskModeInterfaceInit( g_mainloop, lsh_priv, lsh_pub, invertCarrier );
     EraseInit(g_mainloop, lsh_priv);
 
-    retVal = LSGmainAttach( lsh_priv, g_mainloop, &lserror ); 
+    retVal = LSGmainAttach( lsh_priv, g_mainloop, &lserror );
     if ( !retVal )
     {
         g_critical( "LSGmainAttach private returned %s", lserror.message );
         LSErrorFree(&lserror);
     }
-    retVal = LSGmainAttach( lsh_pub, g_mainloop, &lserror ); 
+    retVal = LSGmainAttach( lsh_pub, g_mainloop, &lserror );
     if ( !retVal )
     {
         g_critical( "LSGmainAttach public returned %s", lserror.message );
@@ -316,7 +334,7 @@ main(int argc, char **argv)
         g_critical( "LSUnregister public returned %s", lserror.message );
     }
 
-	UnlockProcess();
+    UnlockProcess();
 
     g_debug( "exiting %s in %s", __func__, __FILE__ );
 

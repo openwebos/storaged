@@ -92,7 +92,7 @@ umount_timer_proc( gpointer data )
     if( ret == NYX_ERROR_NONE) {
         finish_mass_storage_mode_transition( lsh );
     } else {
-    	g_message("Aborting Mass Storage Mode due to return code : %d",ret_status);
+        g_message("Aborting Mass Storage Mode due to return code : %d",ret_status);
         abort_mass_storage_mode_transition( lsh );
     }
     sUmountTimerId = 0;
@@ -134,18 +134,18 @@ launch_customization(LSHandle* lsh)
 void handle_mass_storage_mode_exit(nyx_mass_storage_mode_return_code_t ret_status, LSHandle* lsh)
 {
     /* Let's just ignore this message if we can't get into Mass Storage Mode at all. */
-   	if (ret_status >= NYX_MASS_STORAGE_MODE_PARTITION_REFORMATTED)
-   	{
-                g_critical("Drive reformatted due to unmount failures");
-   		if(ret_status != NYX_MASS_STORAGE_MODE_MOUNT_FAILURE_AFTER_REFORMAT)
-   			launch_customization(lsh);
-	}
+    if (ret_status >= NYX_MASS_STORAGE_MODE_PARTITION_REFORMATTED)
+    {
+        g_critical("Drive reformatted due to unmount failures");
+        if(ret_status != NYX_MASS_STORAGE_MODE_MOUNT_FAILURE_AFTER_REFORMAT)
+            launch_customization(lsh);
+    }
 
     if (unmount) {
-       	bool reformatted = (ret_status >= NYX_MASS_STORAGE_MODE_PARTITION_REFORMATTED);
-       	bool fsck_found_problem = (ret_status == NYX_MASS_STORAGE_MODE_FSCK_PROBLEM) || (ret_status == NYX_MASS_STORAGE_MODE_PARTITION_REFORMATTED_FSCK_PROBLEM);
-       	SignalPartitionAvail( lsh, MEDIA_INTERNAL, true, reformatted, fsck_found_problem );
-       	unmount = false;
+        bool reformatted = (ret_status >= NYX_MASS_STORAGE_MODE_PARTITION_REFORMATTED);
+        bool fsck_found_problem = (ret_status == NYX_MASS_STORAGE_MODE_FSCK_PROBLEM) || (ret_status == NYX_MASS_STORAGE_MODE_PARTITION_REFORMATTED_FSCK_PROBLEM);
+        SignalPartitionAvail( lsh, MEDIA_INTERNAL, true, reformatted, fsck_found_problem );
+        unmount = false;
     }
 }
 
@@ -181,10 +181,10 @@ handle_cable( LSHandle* lsh, bool plugIn) {
             sUmountTimerId = 0;
         }
         if(still_exported)
-        	SignalMSMFscking(lsh);
+            SignalMSMFscking(lsh);
 
-    	nyx_mass_storage_mode_return_code_t ret_status;
-    	nyx_mass_storage_mode_set_mode(nyxMassStorageMode, NYX_MASS_STORAGE_MODE_DISABLE_AFTER_FSCK, &ret_status);
+        nyx_mass_storage_mode_return_code_t ret_status;
+        nyx_mass_storage_mode_set_mode(nyxMassStorageMode, NYX_MASS_STORAGE_MODE_DISABLE_AFTER_FSCK, &ret_status);
 
         handle_mass_storage_mode_exit(ret_status,lsh);
 
@@ -225,8 +225,8 @@ handle_cableLS( LSHandle* lsh, LSMessage* message, void* user_data )
     const char *payload = LSMessageGetPayload(message);
     struct json_object *object = json_tokener_parse(payload);
     if (is_error(object)) {
-    	answer = "{\"returnValue\":false,\"errorText\":\"param 'connected' missing or invalid\"}";
-    	goto send;
+        answer = "{\"returnValue\":false,\"errorText\":\"param 'connected' missing or invalid\"}";
+        goto send;
     }
     plugIn = json_object_get_boolean(
                json_object_object_get(object, "connected"));
@@ -309,7 +309,7 @@ handle_mount_on_hostLS( LSHandle* lsh, LSMessage* message, void* user_data )
     }
 
     connected = json_object_get_boolean(
-                 json_object_object_get(object, "connected"));
+                json_object_object_get(object, "connected"));
 
     handle_mount_on_host(lsh, connected);
 
@@ -555,9 +555,9 @@ DiskModeInterfaceInit(GMainLoop *loop, LSHandle* priv_handle, LSHandle* pub_hand
         LSREPORT( lserror );
     }
     if ( !LSRegisterCategory ( pub_handle, "/diskmode", diskModePubMethods,
-       		NULL, NULL, &lserror) )
+        NULL, NULL, &lserror) )
     {
-    	LSREPORT( lserror );
+        LSREPORT( lserror );
     }
     LSErrorFree( &lserror );
 

@@ -47,17 +47,15 @@ pkg_check_modules(NYXLIB REQUIRED nyx)
 include_directories(${NYXLIB_INCLUDE_DIRS})
 webos_add_compiler_flags(ALL ${NYXLIB_CFLAGS_OTHER})
 
-# Nyxlib version 3.2.0~rc1 introduced an API break in Mass Storage Mode usage
+# Nyxlib version 4.0.0~rc1 introduced an API break in Mass Storage Mode usage
 string(REPLACE "." ";" NYXV ${NYXLIB_VERSION})
 string(REPLACE "~" ";" NYXV "${NYXV}")
 list(GET NYXV 0 NYXLIB_MAJOR)
-list(GET NYXV 1 NYXLIB_MINOR)
-if(${NYXLIB_MAJOR} LESS 4 AND ${NYXLIB_MINOR} LESS 2)
-	message(FATAL_ERROR "nyx-lib required minimum version is 3.2.0~RC1")
+if(${NYXLIB_MAJOR} LESS 4)
+	message(FATAL_ERROR "nyx-lib required minimum version is 4.0.0~RC1")
 endif()
 unset(NYXV)
 unset(NYXLIB_MAJOR)
-unset(NYXLIB_MINOR)
 
 webos_add_compiler_flags(ALL -Wall)
 

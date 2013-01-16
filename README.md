@@ -23,7 +23,7 @@ Below are the tools and libraries (and their minimum versions) required to build
 * openwebos/cjson 1.8.0
 * openwebos/cmake-modules-webos 1.0.0 RC3
 * openwebos/luna-service2 3.0.0
-* openwebos/nyx-lib 3.2.0 RC1
+* openwebos/nyx-lib 4.0.0 RC1
 * pkg-config 0.26
 
 ## Building

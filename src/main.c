@@ -75,8 +75,8 @@ static int sTimerEventSource = 0;
  ***********************************************************************/
 typedef struct
 {
-	char	path[ PATH_MAX ];
-	int		fd;
+    char path[ PATH_MAX ];
+    int fd;
 }
 LockFile;
 
@@ -96,45 +96,45 @@ bool LockProcess(const char* component)
 {
 #define LOCKS_DIR_PATH "/tmp/run"
 
-	pid_t		pid;
-	int			fd;
-	int			result;
+    pid_t pid;
+    int fd;
+    int result;
 
-	pid = getpid();
+    pid = getpid();
 
-	LockFile * lock = &sProcessLock;
+    LockFile * lock = &sProcessLock;
 
-	// create the locks directory if necessary
-	(void) mkdir(LOCKS_DIR_PATH, 0777);
+    // create the locks directory if necessary
+    (void) mkdir(LOCKS_DIR_PATH, 0777);
 
-	snprintf(lock->path, sizeof(lock->path), "%s/%s.pid", LOCKS_DIR_PATH, component);
+    snprintf(lock->path, sizeof(lock->path), "%s/%s.pid", LOCKS_DIR_PATH, component);
 
-	// open or create the lock file
-	fd = open(lock->path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-	if (fd < 0)
-	{
-		g_error("Failed to open lock file (err %d, %s), exiting.", errno, strerror(errno));
-		return false;
-	}
+    // open or create the lock file
+    fd = open(lock->path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    if (fd < 0)
+    {
+        g_error("Failed to open lock file (err %d, %s), exiting.", errno, strerror(errno));
+        return false;
+    }
 
-	// use a POSIX advisory file lock as a mutex
-	result = lockf(fd, F_TLOCK, 0);
-	if (result < 0)
-	{
+    // use a POSIX advisory file lock as a mutex
+    result = lockf(fd, F_TLOCK, 0);
+    if (result < 0)
+    {
         if ((errno == EDEADLK) || (errno == EAGAIN))
             g_error("Failed to acquire lock, exiting.");
         else
             g_error("Failed to acquire lock (errno %d, %s), exiting.", errno, strerror(errno));
-        
-		return false;
-	}
-	
-	// remove the old pid number data
-	result = ftruncate(fd, 0);
-	if (result < 0)
-		g_debug("Failed truncating lock file (err %d, %s).", errno, strerror(errno));
-	
-	// write the pid to the file to aid debugging
+
+        return false;
+    }
+
+    // remove the old pid number data
+    result = ftruncate(fd, 0);
+    if (result < 0)
+        g_debug("Failed truncating lock file (err %d, %s).", errno, strerror(errno));
+
+    // write the pid to the file to aid debugging
     {
         gchar *pid_str = g_strdup_printf("%d\n", pid);
         int pid_str_len = (int) strlen(pid_str);
@@ -143,9 +143,9 @@ bool LockProcess(const char* component)
             g_debug("Failed writing lock file (err %d, %s).", errno, strerror(errno));
         g_free(pid_str);
     }
-	
-	lock->fd = fd;
-	return true;
+
+    lock->fd = fd;
+    return true;
 }
 
 
@@ -157,11 +157,11 @@ bool LockProcess(const char* component)
  */
 void UnlockProcess(void)
 {
-	LockFile*	lock;
+    LockFile* lock;
 
-	lock = &sProcessLock;
-	close(lock->fd);
-	(void) unlink(lock->path);
+    lock = &sProcessLock;
+    close(lock->fd);
+    (void) unlink(lock->path);
 }
 
 
@@ -217,13 +217,13 @@ static nyx_device_handle_t nyxMassStorageMode = NULL;
 nyx_device_handle_t
 GetNyxSystemDevice(void)
 {
-	return nyxSystem;
+    return nyxSystem;
 }
 
 nyx_device_handle_t
 GetNyxMassStorageModeDevice(void)
 {
-	return nyxMassStorageMode;
+    return nyxMassStorageMode;
 }
 
 
@@ -255,12 +255,11 @@ main(int argc, char **argv)
         }
     }
 
-	// make sure we aren't already running.
-	if (!LockProcess("storaged")) {
-		g_error("%s: %s daemon is already running.\n", __func__, argv[0]);
-		exit(EXIT_FAILURE);
-	}
-
+    // make sure we aren't already running.
+    if (!LockProcess("storaged")) {
+        g_error("%s: %s daemon is already running.\n", __func__, argv[0]);
+        exit(EXIT_FAILURE);
+    }
 
     g_log_set_default_handler(logFilter, NULL);
     g_debug( "entering %s in %s", __func__, __FILE__ );

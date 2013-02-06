@@ -73,5 +73,8 @@ target_link_libraries(storaged
 webos_build_program(ADMIN)
 webos_build_system_bus_files()
 
-webos_build_configured_file(scripts/public/storage.sh SYSCONFDIR udev/scripts)
+webos_configure_source_files(configuredfile scripts/public/storage.sh)
+install(PROGRAMS ${configuredfile}
+    DESTINATION ${WEBOS_INSTALL_SYSCONFDIR}/udev/scripts)
+
 webos_build_configured_file(files/conf/90-storaged.rules SYSCONFDIR udev/rules.d)

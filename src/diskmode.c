@@ -455,7 +455,7 @@ handle_enter_mass_storage_mode( LSHandle* lsh, LSMessage* message, void* user_da
         goto err;
     }
 
-    confirmed = json_object_get_boolean(json_object_object_get(object, "connected"));
+    confirmed = json_object_get_boolean(json_object_object_get(object, "user-confirmed"));
 
     errStr = NULL;
     if ( confirmed )

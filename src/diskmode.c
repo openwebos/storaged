@@ -43,6 +43,7 @@
 #include "main.h"
 
 static guint sUmountTimerId = 0;   /* real ids always > 0 */
+static bool sNeedToRunPostScripts = false;
 static bool inMSM = false, unmount = false;
 
 
@@ -150,6 +151,17 @@ void handle_mass_storage_mode_exit(nyx_mass_storage_mode_return_code_t ret_statu
 }
 
 static void
+execute_scripts(const char* path, GError **error)
+{
+    char * comm = g_strdup_printf("run-parts %s", path);
+    char * std_err = NULL;
+    g_debug("%s: executing %s", __func__, comm);
+    (void) g_spawn_command_line_sync(comm, NULL, &std_err, NULL, error);
+    g_free(comm);
+    SHOW_STDERR(std_err);
+}
+
+static void
 handle_cable( LSHandle* lsh, bool plugIn) {
 
     g_debug("%s: called with plugin=%d", __func__, plugIn);
@@ -187,6 +199,13 @@ handle_cable( LSHandle* lsh, bool plugIn) {
         nyx_mass_storage_mode_set_mode(nyxMassStorageMode, NYX_MASS_STORAGE_MODE_DISABLE_AFTER_FSCK, &ret_status);
 
         handle_mass_storage_mode_exit(ret_status,lsh);
+
+        if (sNeedToRunPostScripts) {
+            execute_scripts(POSTMSM_SCRIPT_DIR, &error);
+            SHOW_ERROR(error);
+        }
+
+        sNeedToRunPostScripts = false;
 
         SignalMSMAvailChange( lsh, false );
 
@@ -250,6 +269,8 @@ send:
 void
 handle_mount_on_host(LSHandle *lsh, bool mount) 
 {
+    GError * error = NULL;
+
     g_debug("%s: called with mount=%d", __func__, mount);
 
     /* Tell the world we're an externally mounted drive or not.  Do this even
@@ -269,8 +290,15 @@ handle_mount_on_host(LSHandle *lsh, bool mount)
 
         handle_mass_storage_mode_exit(ret_status, lsh);
 
+        if (sNeedToRunPostScripts) {
+            execute_scripts(POSTMSM_SCRIPT_DIR, &error);
+            SHOW_ERROR(error);
+        }
+
         inMSM = false;
         SignalMSMStatus ( lsh, false);
+
+        sNeedToRunPostScripts = false;
     }
 }
 
@@ -367,6 +395,12 @@ begin_mass_storage_mode_transition( LSHandle* lsh )
     inMSM = true;
     SignalMSMStatus ( lsh, true);
     SignalMSMProgress( lsh, MSM_MODE_CHANGE_ATTEMPTING, false );
+
+    GError * error = NULL;
+    execute_scripts(PREMSM_SCRIPT_DIR, &error);
+    SHOW_ERROR(error);
+
+    sNeedToRunPostScripts = true;
 
     set_umount_timer( lsh );
 }

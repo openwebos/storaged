@@ -62,6 +62,10 @@ webos_add_compiler_flags(ALL -Wall)
 # Require that all undefined symbols are satisfied by the libraries from target_link_libraries()
 webos_add_linker_options(ALL --no-undefined)
 
+# Locations of mass storage mode pre/post-change scripts
+add_definitions(-DPREMSM_SCRIPT_DIR="${WEBOS_INSTALL_SYSCONFDIR}/storaged/pre_msm.d")
+add_definitions(-DPOSTMSM_SCRIPT_DIR="${WEBOS_INSTALL_SYSCONFDIR}/storaged/post_msm.d")
+
 # Build the storaged executable
 
 add_executable(storaged src/diskmode.c src/erase.c src/log.c src/main.c src/signals.c src/util.c)
